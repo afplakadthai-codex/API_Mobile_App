@@ -415,7 +415,17 @@ function bv_mobile_fetch_order_items(PDO $pdo, array $order): array
         $sellerId = (int) ($row['seller_id'] ?? $row['oi_seller_id'] ?? $row['listing_seller_id'] ?? 0);
         $imagePath = bv_mobile_first_existing_value($row, ['listing_image_path', 'listing_image_url', 'listing_cover_image', 'listing_main_image', 'oi_cover_image_snapshot'], '');
 
-        $item = [
+        $fulfillmentStatus = (string) ($row['oi_fulfillment_status'] ?? 'unknown');
+        $trackingNumber = $row['oi_tracking_number'] !== null ? (string) $row['oi_tracking_number'] : null;
+        $trackingAvailable = $trackingNumber !== null && trim($trackingNumber) !== '';
+        $trackingMessage = '';
+        if ($trackingAvailable) {
+            $trackingMessage = 'Tracking information is available.';
+        } elseif (in_array(strtolower(trim($fulfillmentStatus)), ['shipped', 'completed'], true)) {
+            $trackingMessage = 'Tracking information is not available yet.';
+        }
+        
+		$item = [
             'order_item_id' => (int) ($row['oi_id'] ?? 0),
             'listing_id' => $listingId,
             'title' => bv_mobile_first_existing_value($row, ['oi_title', 'oi_listing_title', 'oi_item_title', 'oi_title_snapshot', 'listing_title'], ''),
@@ -429,9 +439,11 @@ function bv_mobile_fetch_order_items(PDO $pdo, array $order): array
                 'email' => (string) ($row['seller_email'] ?? ''),
             ],
             'fulfillment' => [
-                'status' => (string) ($row['oi_fulfillment_status'] ?? 'unknown'),
+                 'status' => $fulfillmentStatus,
                 'carrier' => $row['oi_carrier'] !== null ? (string) $row['oi_carrier'] : null,
-                'tracking_number' => $row['oi_tracking_number'] !== null ? (string) $row['oi_tracking_number'] : null,
+                'tracking_number' => $trackingNumber,
+                'tracking_available' => $trackingAvailable,
+                'tracking_message' => $trackingMessage, 
                 'processed_at' => $row['oi_processed_at'] !== null ? (string) $row['oi_processed_at'] : null,
                 'shipped_at' => $row['oi_shipped_at'] !== null ? (string) $row['oi_shipped_at'] : null,
                 'completed_at' => $row['oi_completed_at'] !== null ? (string) $row['oi_completed_at'] : null,
